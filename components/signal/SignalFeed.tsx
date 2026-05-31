@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import type { InfiniteData } from "@tanstack/query-core";
-import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { SignalEmptyState } from "@/components/SignalEmptyState";
 import { SignalFeedFilters } from "@/components/SignalFeedFilters";
@@ -26,9 +25,6 @@ const PAGE_SIZE = 10;
 const STALE_TIME = 1000 * 60 * 5;
 
 export function SignalFeed() {
-  const pathname = usePathname();
-  // #99: persist scroll position across navigation
-  const scrollPosRef = useRef<number>(0);
   const feedRef = useRef<HTMLDivElement | null>(null);
 
   // #99: provider search state (persisted in filter store)
@@ -97,15 +93,6 @@ export function SignalFeed() {
     }
     return copy;
   }, [filteredSignals, sortOrder]);
-
-  useEffect(() => {
-    const saved = sessionStorage.getItem(`scroll:${pathname}`);
-    if (saved) window.scrollTo(0, parseInt(saved, 10));
-
-    return () => {
-      sessionStorage.setItem(`scroll:${pathname}`, String(window.scrollY));
-    };
-  }, [pathname]);
 
   const sentinelRef = useRef<HTMLDivElement | null>(null);
 
