@@ -2,7 +2,15 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
 export type FilterDirection = "ALL" | "BUY" | "SELL";
-export type FeedSortOrder = "latest" | "hot" | "relevant";
+export type FeedSortOrder = "latest" | "hot" | "relevant" | "confidence";
+
+/** Human-readable labels for each sort order */
+export const SORT_ORDER_LABELS: Record<FeedSortOrder, string> = {
+  latest: "Newest",
+  hot: "Best Performing",
+  relevant: "Relevant",
+  confidence: "Confidence",
+};
 
 interface SignalFilterState {
   direction: FilterDirection;

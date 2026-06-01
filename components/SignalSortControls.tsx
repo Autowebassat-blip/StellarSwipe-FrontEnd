@@ -1,6 +1,6 @@
 "use client";
 
-import { Flame, Clock, Sparkles } from "lucide-react";
+import { Flame, Clock, Sparkles, BarChart2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FeedSortOrder, useSignalFilterStore } from "@/store/useSignalFilterStore";
 
@@ -9,26 +9,42 @@ interface SortOption {
   label: string;
   icon: React.ElementType;
   description: string;
+  activeColor: string;
+  activeIconColor: string;
 }
 
 const SORT_OPTIONS: SortOption[] = [
   {
     value: "latest",
-    label: "Latest",
+    label: "Newest",
     icon: Clock,
     description: "Most recently published signals",
+    activeColor: "bg-sky-500/20 text-sky-400 border border-sky-500/40",
+    activeIconColor: "text-sky-400",
   },
   {
     value: "hot",
-    label: "Hot",
+    label: "Best Performing",
     icon: Flame,
-    description: "Signals with the highest recent engagement",
+    description: "Signals with the highest projected performance",
+    activeColor: "bg-orange-500/20 text-orange-400 border border-orange-500/40",
+    activeIconColor: "text-orange-400",
+  },
+  {
+    value: "confidence",
+    label: "Confidence",
+    icon: BarChart2,
+    description: "Signals ranked by highest confidence score",
+    activeColor: "bg-emerald-500/20 text-emerald-400 border border-emerald-500/40",
+    activeIconColor: "text-emerald-400",
   },
   {
     value: "relevant",
     label: "Relevant",
     icon: Sparkles,
-    description: "Signals best matching your filters",
+    description: "Signals best matching your active filters",
+    activeColor: "bg-purple-500/20 text-purple-400 border border-purple-500/40",
+    activeIconColor: "text-purple-400",
   },
 ];
 
@@ -43,9 +59,9 @@ export function SignalSortControls({ className }: SignalSortControlsProps) {
     <div
       role="group"
       aria-label="Sort signals"
-      className={cn("flex items-center gap-1", className)}
+      className={cn("flex flex-wrap items-center gap-1", className)}
     >
-      {SORT_OPTIONS.map(({ value, label, icon: Icon, description }) => {
+      {SORT_OPTIONS.map(({ value, label, icon: Icon, description, activeColor, activeIconColor }) => {
         const isActive = sortOrder === value;
         return (
           <button
@@ -58,30 +74,16 @@ export function SignalSortControls({ className }: SignalSortControlsProps) {
             className={cn(
               "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500",
               isActive
-                ? value === "hot"
-                  ? "bg-orange-500/20 text-orange-400 border border-orange-500/40"
-                  : value === "relevant"
-                  ? "bg-purple-500/20 text-purple-400 border border-purple-500/40"
-                  : "bg-sky-500/20 text-sky-400 border border-sky-500/40"
+                ? activeColor
                 : "bg-white/5 text-slate-400 border border-white/10 hover:border-white/20 hover:text-slate-300"
             )}
           >
             <Icon
               size={12}
               aria-hidden="true"
-              className={cn(
-                isActive
-                  ? value === "hot"
-                    ? "text-orange-400"
-                    : value === "relevant"
-                    ? "text-purple-400"
-                    : "text-sky-400"
-                  : "text-slate-500"
-              )}
+              className={cn(isActive ? activeIconColor : "text-slate-500")}
             />
-            <span className="hidden sm:inline">{label}</span>
-            {/* Mobile: icon only, label via aria-label */}
-            <span className="sm:hidden">{label}</span>
+            <span>{label}</span>
           </button>
         );
       })}
