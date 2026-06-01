@@ -22,6 +22,7 @@ import { PnLWidget } from "@/components/chart/PnLWidget";
 import { OnChainConfirmationStatus } from "@/components/OnChainConfirmationStatus";
 import { TransactionActivityFeed } from "@/components/TransactionActivityFeed";
 import { PositionStopLossControl } from "@/components/PositionStopLossControl";
+import { OnboardingFlow } from "@/components/OnboardingFlow";
 
 export default function AppPage() {
   const { publicKey, connected } = useWallet();
@@ -83,6 +84,7 @@ export default function AppPage() {
   if (!connected) {
     return (
       <PageTransition>
+        <OnboardingFlow />
         <main className="flex min-h-screen flex-col items-center justify-center gap-6 p-4 sm:gap-8 sm:p-8 bg-gray-950">
           <motion.div
             initial={{ opacity: 0, y: -20 }}
