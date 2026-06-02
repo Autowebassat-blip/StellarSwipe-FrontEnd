@@ -1,0 +1,53 @@
+"use client";
+
+import type { Signal } from "@/lib/api";
+
+interface ComparisonChartProps {
+  signals: Signal[];
+}
+
+const COLORS = ["#60a5fa", "#34d399", "#f472b6"];
+
+export function ComparisonChart({ signals }: ComparisonChartProps) {
+  if (signals.length === 0) return null;
+
+  const metrics = [
+    { label: "Confidence", getValue: (s: Signal) => s.confidence },
+    { label: "R/R Ratio", getValue: (s: Signal) => parseFloat(s.stats?.riskReward ?? "0") || 0, scale: 10 },
+    { label: "Target ∆%", getValue: (s: Signal) => s.stats ? ((s.stats.targetPrice - s.stats.entryPrice) / s.stats.entryPrice) * 100 : 0, scale: 100 },
+  ];
+
+  return (
+    <div className="space-y-4">
+      {metrics.map(({ label, getValue, scale = 100 }) => {
+        const values = signals.map(getValue);
+        const maxVal = Math.max(...values, scale * 0.01);
+        return (
+          <div key={label}>
+            <p className="text-xs text-gray-400 mb-2">{label}</p>
+            <div className="space-y-1.5">
+              {signals.map((signal, i) => {
+                const val = values[i];
+                const pct = Math.min((val / maxVal) * 100, 100);
+                return (
+                  <div key={signal.id} className="flex items-center gap-3">
+                    <span className="text-xs text-gray-300 w-16 truncate shrink-0">{signal.asset}</span>
+                    <div className="flex-1 bg-gray-800 rounded-full h-2 overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all duration-500"
+                        style={{ width: `${pct}%`, backgroundColor: COLORS[i] }}
+                      />
+                    </div>
+                    <span className="text-xs font-mono text-gray-300 w-12 text-right shrink-0">
+                      {val.toFixed(1)}{label === "Confidence" ? "%" : ""}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
