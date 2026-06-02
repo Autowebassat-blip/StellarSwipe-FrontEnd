@@ -2,6 +2,10 @@ import type { Metadata } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
+import { Navbar } from "@/components/Navbar";
+import { TradeStatusBanner } from "@/components/TradeStatusBanner";
+import { DevPerfOverlay } from "@/components/DevPerfOverlay";
+import { ScrollRestoration } from "@/components/ScrollRestoration";
 
 const inter = Inter({
   variable: "--font-sans",
@@ -24,9 +28,23 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" className="dark" suppressHydrationWarning>
+      <head>
+        {/* Apply persisted theme before first paint to avoid flash */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=JSON.parse(localStorage.getItem('stellar-theme')||'{}');var theme=t.state&&t.state.theme;if(theme==='light'){document.documentElement.classList.remove('dark');document.documentElement.classList.add('light');}}catch(e){}})();`,
+          }}
+        />
+      </head>
       <body className={`${inter.variable} ${jetbrainsMono.variable} antialiased`}>
-        <Providers>{children}</Providers>
+        <Providers>
+          <ScrollRestoration />
+          <Navbar />
+          {children}
+          <TradeStatusBanner />
+          <DevPerfOverlay />
+        </Providers>
       </body>
     </html>
   );
