@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ArrowRight, CheckCircle2, Clock3, XCircle } from "lucide-react";
 import { useTransactionStore } from "@/store/useTransactionStore";
 import { cn } from "@/lib/utils";
+import { RelativeTimestamp } from "@/components/RelativeTimestamp";
 
 const TYPE_OPTIONS = [
   { label: "All", value: "ALL" },
@@ -134,7 +135,7 @@ export function TransactionActivityFeed() {
                   </div>
                   <div>
                     <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Time</p>
-                    <p className="text-sm text-foreground-muted">{new Date(item.timestamp).toLocaleString()}</p>
+                    <RelativeTimestamp timestamp={new Date(item.timestamp)} />
                   </div>
                 </div>
 

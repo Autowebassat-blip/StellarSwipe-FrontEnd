@@ -16,6 +16,7 @@ import type { Signal } from "@/lib/signals";
 import { Search, X, SlidersHorizontal } from "lucide-react";
 import { useSyncStatus } from "@/hooks/useSyncStatus";
 import { SyncStatusIndicator } from "@/components/SyncStatusIndicator";
+import { RelativeTimestamp } from "@/components/RelativeTimestamp";
 
 interface SignalResponse {
   items: Signal[];
@@ -361,7 +362,7 @@ export function SignalFeed() {
                     <div>
                       <p className="text-xs uppercase tracking-[0.3em] text-foreground-muted">
                         <time dateTime={signal.timestamp}>
-                          {new Date(signal.timestamp).toLocaleString()}
+                          <RelativeTimestamp timestamp={new Date(signal.timestamp)} />
                         </time>
                       </p>
                       <h3 className="mt-2 text-base font-semibold tracking-tight text-white sm:text-xl">
