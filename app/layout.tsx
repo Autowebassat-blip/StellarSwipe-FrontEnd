@@ -3,6 +3,7 @@ import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
 import { Navbar } from "@/components/Navbar";
+import { PageTransitionPlaceholder } from "@/components/PageTransitionPlaceholder";
 import { TradeStatusBanner } from "@/components/TradeStatusBanner";
 import { DevPerfOverlay } from "@/components/DevPerfOverlay";
 import { ScrollRestoration } from "@/components/ScrollRestoration";
@@ -41,6 +42,7 @@ export default function RootLayout({
         <Providers>
           <ScrollRestoration />
           <Navbar />
+          <PageTransitionPlaceholder />
           {children}
           <TradeStatusBanner />
           <DevPerfOverlay />
