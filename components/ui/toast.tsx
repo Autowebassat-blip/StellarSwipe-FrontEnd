@@ -26,7 +26,7 @@ export function ToastProvider() {
       aria-live="polite"
       className="fixed inset-x-0 bottom-4 z-toast mx-auto flex max-w-[min(92vw,420px)] flex-col items-center gap-3 px-4 sm:bottom-auto sm:top-4 sm:right-4 sm:left-auto sm:mx-0 sm:items-end"
     >
-      <AnimatePresence initial={false}>
+      <AnimatePresence initial={false} mode="popLayout">
         {toasts.map((toast) => {
           const Icon = toneIcons[toast.tone];
           const ariaLive = toast.tone === "error" ? "assertive" : "polite";

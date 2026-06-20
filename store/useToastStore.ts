@@ -19,7 +19,11 @@ interface ToastState {
   dismiss: (id: string) => void;
 }
 
-const DEFAULT_TOAST_DURATION = 5000;
+export const DEFAULT_TOAST_DURATION = 5000;
+
+// Caps the visible stack so toasts always lay out vertically without
+// overrunning the viewport; oldest toast is evicted once the cap is hit.
+export const MAX_VISIBLE_TOASTS = 4;
 
 function generateToastId() {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
@@ -33,7 +37,9 @@ export const useToastStore = create<ToastState>((set, get) => ({
   enqueue: ({ title, description, link, tone, duration = DEFAULT_TOAST_DURATION }) => {
     const id = generateToastId();
     set((state) => ({
-      toasts: [...state.toasts, { id, title, description, link, tone, duration }],
+      toasts: [...state.toasts, { id, title, description, link, tone, duration }].slice(
+        -MAX_VISIBLE_TOASTS
+      ),
     }));
 
     if (typeof window !== "undefined" && duration > 0) {
