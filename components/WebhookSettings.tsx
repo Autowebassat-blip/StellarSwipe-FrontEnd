@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useWebhookStore, type WebhookEventType } from "@/store/useWebhookStore";
-import { buildSamplePayload, dispatchWebhookEvent } from "@/services/webhookService";
+import { sendTestWebhook } from "@/services/webhookService";
 import { Button } from "@/components/ui/button";
 import { Trash2, Plus, Send, Copy } from "lucide-react";
 
@@ -16,7 +16,7 @@ export function WebhookSettings() {
   const { webhooks, addWebhook, removeWebhook, updateEvents } = useWebhookStore();
   const [url, setUrl] = useState("");
   const [selectedEvents, setSelectedEvents] = useState<WebhookEventType[]>(["new_signal"]);
-  const [testStatus, setTestStatus] = useState<Record<string, string>>({});
+  const [testStatus, setTestStatus] = useState<Record<string, { state: "sending" | "success" | "failed"; message: string }>>({});
   const [copied, setCopied] = useState<string | null>(null);
 
   const handleAdd = () => {
@@ -26,10 +26,28 @@ export function WebhookSettings() {
   };
 
   const handleTest = async (webhookId: string) => {
-    setTestStatus((s) => ({ ...s, [webhookId]: "Sending…" }));
-    await dispatchWebhookEvent("new_signal", buildSamplePayload("new_signal").data);
-    setTestStatus((s) => ({ ...s, [webhookId]: "Sent ✓" }));
-    setTimeout(() => setTestStatus((s) => ({ ...s, [webhookId]: "" })), 3000);
+    setTestStatus((s) => ({
+      ...s,
+      [webhookId]: { state: "sending", message: "Sending test webhook..." },
+    }));
+    try {
+      const delivery = await sendTestWebhook(webhookId);
+      setTestStatus((s) => ({
+        ...s,
+        [webhookId]:
+          delivery.status === "success"
+            ? { state: "success", message: `Test delivered successfully (${delivery.statusCode})` }
+            : { state: "failed", message: delivery.error ?? "Test delivery failed" },
+      }));
+    } catch (error) {
+      setTestStatus((s) => ({
+        ...s,
+        [webhookId]: {
+          state: "failed",
+          message: error instanceof Error ? error.message : "Test delivery failed",
+        },
+      }));
+    }
   };
 
   const copySecret = (secret: string, id: string) => {
@@ -79,23 +97,33 @@ export function WebhookSettings() {
 
       {/* Webhook list */}
       {webhooks.length === 0 && (
-        <p className="text-sm text-muted-foreground text-center py-6">No webhooks configured.</p>
+        <div className="rounded-lg border border-dashed bg-card p-4 text-center">
+          <p className="text-sm text-muted-foreground">No webhooks configured.</p>
+          <Button size="sm" variant="outline" className="mt-3 gap-1" disabled aria-describedby="webhook-test-disabled">
+            <Send size={12} />
+            Send test webhook
+          </Button>
+          <p id="webhook-test-disabled" className="mt-2 text-xs text-muted-foreground">
+            Add a webhook URL before sending a test payload.
+          </p>
+        </div>
       )}
 
       {webhooks.map((wh) => (
         <div key={wh.id} className="rounded-lg border bg-card p-4 space-y-3">
           <div className="flex items-center justify-between gap-2">
-            <span className="text-sm font-mono truncate max-w-xs">{wh.url}</span>
+            <span className="text-sm font-mono truncate max-w-xs" title={wh.url}>{wh.url}</span>
             <div className="flex items-center gap-1 shrink-0">
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => handleTest(wh.id)}
-                aria-label="Test webhook"
+                disabled={!wh.url || testStatus[wh.id]?.state === "sending"}
+                aria-label={`Send test webhook to ${wh.url}`}
                 className="gap-1 text-xs"
               >
                 <Send size={12} />
-                {testStatus[wh.id] || "Test"}
+                {testStatus[wh.id]?.state === "sending" ? "Sending..." : "Send test webhook"}
               </Button>
               <Button
                 variant="ghost"
@@ -108,6 +136,21 @@ export function WebhookSettings() {
               </Button>
             </div>
           </div>
+
+          {testStatus[wh.id] && (
+            <p
+              role={testStatus[wh.id].state === "failed" ? "alert" : "status"}
+              className={`rounded-md px-3 py-2 text-xs ${
+                testStatus[wh.id].state === "success"
+                  ? "bg-green-500/10 text-green-600"
+                  : testStatus[wh.id].state === "failed"
+                  ? "bg-red-500/10 text-red-500"
+                  : "bg-blue-500/10 text-blue-600"
+              }`}
+            >
+              {testStatus[wh.id].message}
+            </p>
+          )}
 
           {/* Events */}
           <div className="flex flex-wrap gap-2">
