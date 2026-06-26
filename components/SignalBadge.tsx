@@ -14,7 +14,7 @@ export function SignalBadge({ signal }: SignalBadgeProps) {
   return (
     <span
       aria-label={`${signal} signal`}
-      className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold tracking-wide ${styles[signal]}`}
+      className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold tracking-wide fc-badge fc-pill ${styles[signal]}`}
     >
       {signal}
     </span>
