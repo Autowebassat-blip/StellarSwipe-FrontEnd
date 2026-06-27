@@ -21,13 +21,13 @@ const links = {
 
 export function Footer() {
   return (
-    <footer className="border-t border-white/10 bg-slate-950 px-6 py-12">
+    <footer className="border-t border-border bg-surface px-6 py-12">
       <div className="mx-auto max-w-6xl">
         <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
           {/* Brand */}
           <div className="flex flex-col gap-3">
-            <span className="text-lg font-bold text-white">StellarSwipe</span>
-            <p className="text-sm text-slate-400 leading-relaxed">
+            <span className="text-lg font-bold text-foreground">StellarSwipe</span>
+            <p className="text-sm text-foreground-muted leading-relaxed">
               AI-powered trading signals on the Stellar SDEX. Connect your wallet, follow top providers, and swipe to trade.
             </p>
           </div>
@@ -35,7 +35,7 @@ export function Footer() {
           {/* Link columns */}
           {Object.entries(links).map(([group, items]) => (
             <div key={group} className="flex flex-col gap-3">
-              <span className="text-xs font-semibold uppercase tracking-widest text-slate-500">
+              <span className="text-xs font-semibold uppercase tracking-widest text-foreground-muted">
                 {group}
               </span>
               <ul className="flex flex-col gap-2">
@@ -43,7 +43,7 @@ export function Footer() {
                   <li key={label}>
                     <Link
                       href={href}
-                      className="text-sm text-slate-400 hover:text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 rounded"
+                      className="text-sm text-foreground-muted hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 rounded"
                     >
                       {label}
                     </Link>
@@ -67,7 +67,7 @@ export function Footer() {
               <Link
                 key={label}
                 href={href}
-                className="text-xs text-slate-500 hover:text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 rounded"
+                className="text-xs text-foreground-muted hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 rounded"
               >
                 {label}
               </Link>

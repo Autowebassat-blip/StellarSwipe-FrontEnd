@@ -1,0 +1,345 @@
+"use client";
+
+import { useMemo } from "react";
+import Link from "next/link";
+import {
+  Activity,
+  AlertTriangle,
+  Battery,
+  Cpu,
+  Globe,
+  MousePointerClick,
+  Timer,
+  Wifi,
+} from "lucide-react";
+import { usePerformanceMonitoringStore } from "@/store/usePerformanceMonitoringStore";
+import type { NetworkConnectionType } from "@/lib/performance/types";
+
+function formatMs(ms: number): string {
+  return `${ms} ms`;
+}
+
+function avg(values: number[]): number {
+  if (values.length === 0) return 0;
+  return Math.round(values.reduce((a, b) => a + b, 0) / values.length);
+}
+
+function StatCard({
+  label,
+  value,
+  icon: Icon,
+  sub,
+}: {
+  label: string;
+  value: string;
+  icon: React.ComponentType<{ className?: string }>;
+  sub?: string;
+}) {
+  return (
+    <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+      <div className="mb-2 flex items-center gap-2 text-xs font-medium text-foreground-muted">
+        <Icon className="h-3.5 w-3.5 text-sky-400" aria-hidden="true" />
+        {label}
+      </div>
+      <div className="text-2xl font-bold tabular-nums text-foreground">{value}</div>
+      {sub && <div className="mt-1 text-xs text-foreground-muted">{sub}</div>}
+    </div>
+  );
+}
+
+function NetworkRow({
+  type,
+  count,
+  avgApiMs,
+}: {
+  type: NetworkConnectionType;
+  count: number;
+  avgApiMs: number;
+}) {
+  const label =
+    type === "wifi"
+      ? "WiFi"
+      : type === "cellular"
+      ? "Mobile data"
+      : type.charAt(0).toUpperCase() + type.slice(1);
+
+  return (
+    <div className="flex items-center justify-between rounded-lg bg-white/5 px-3 py-2 text-sm">
+      <span className="text-foreground-muted">{label}</span>
+      <span className="tabular-nums text-foreground">
+        {count} calls · avg {avgApiMs} ms
+      </span>
+    </div>
+  );
+}
+
+function HeatmapCanvas({ points }: { points: { x: number; y: number }[] }) {
+  return (
+    <div
+      className="relative aspect-[9/16] w-full max-w-xs overflow-hidden rounded-xl border border-white/10 bg-slate-900"
+      aria-label="Interaction heatmap"
+    >
+      {points.map((p, i) => (
+        <div
+          key={`${p.x}-${p.y}-${i}`}
+          className="pointer-events-none absolute h-6 w-6 -translate-x-1/2 -translate-y-1/2 rounded-full bg-orange-500/40 blur-sm"
+          style={{ left: `${p.x}%`, top: `${p.y}%` }}
+        />
+      ))}
+      {points.length === 0 && (
+        <div className="flex h-full items-center justify-center text-xs text-foreground-muted">
+          No interactions recorded yet
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function PerformanceDashboard() {
+  const consent = usePerformanceMonitoringStore((s) => s.consent);
+  const setConsent = usePerformanceMonitoringStore((s) => s.setConsent);
+  const summary = usePerformanceMonitoringStore((s) => s.getSummary());
+
+  const routeStats = useMemo(() => {
+    const byRoute = new Map<string, number[]>();
+    for (const entry of summary.routeLoads) {
+      const list = byRoute.get(entry.route) ?? [];
+      list.push(entry.loadTimeMs);
+      byRoute.set(entry.route, list);
+    }
+    return Array.from(byRoute.entries()).map(([route, times]) => ({
+      route,
+      avgMs: avg(times),
+      count: times.length,
+    }));
+  }, [summary.routeLoads]);
+
+  const avgApiMs = avg(summary.apiResponses.map((e) => e.durationMs));
+  const latestMemory = summary.memorySamples.at(-1);
+  const latestBattery = summary.batterySamples.at(-1);
+  const device = summary.device;
+
+  if (consent === "pending") {
+    return (
+      <div className="rounded-2xl border border-white/10 bg-white/5 p-8 text-center">
+        <Activity className="mx-auto mb-3 h-8 w-8 text-sky-400" />
+        <h2 className="text-lg font-semibold">Consent required</h2>
+        <p className="mt-2 text-sm text-foreground-muted">
+          Enable anonymous performance monitoring to view metrics on this page.
+        </p>
+        <button
+          type="button"
+          onClick={() => setConsent("granted")}
+          className="mt-4 rounded-xl bg-sky-600 px-4 py-2 text-sm font-semibold text-white hover:opacity-90"
+        >
+          Enable monitoring
+        </button>
+      </div>
+    );
+  }
+
+  if (consent === "denied") {
+    return (
+      <div className="rounded-2xl border border-white/10 bg-white/5 p-8 text-center">
+        <h2 className="text-lg font-semibold">Monitoring disabled</h2>
+        <p className="mt-2 text-sm text-foreground-muted">
+          You declined performance monitoring. You can enable it anytime.
+        </p>
+        <button
+          type="button"
+          onClick={() => setConsent("granted")}
+          className="mt-4 rounded-xl bg-sky-600 px-4 py-2 text-sm font-semibold text-white hover:opacity-90"
+        >
+          Enable monitoring
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-8">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <StatCard
+          label="Avg page load"
+          value={formatMs(avg(summary.routeLoads.map((r) => r.loadTimeMs)))}
+          icon={Timer}
+          sub={`${summary.routeLoads.length} samples`}
+        />
+        <StatCard
+          label="Avg API response"
+          value={formatMs(avgApiMs)}
+          icon={Globe}
+          sub={`${summary.apiResponses.length} requests`}
+        />
+        <StatCard
+          label="Memory usage"
+          value={
+            latestMemory?.usedMb != null
+              ? `${latestMemory.usedMb} MB`
+              : "N/A"
+          }
+          icon={Cpu}
+          sub={
+            latestMemory?.totalMb != null
+              ? `of ${latestMemory.totalMb} MB heap`
+              : "Chrome only"
+          }
+        />
+        <StatCard
+          label="Battery"
+          value={
+            latestBattery?.level != null
+              ? `${latestBattery.level}%`
+              : "N/A"
+          }
+          icon={Battery}
+          sub={
+            latestBattery?.charging != null
+              ? latestBattery.charging
+                ? "Charging"
+                : "On battery"
+              : "API unavailable"
+          }
+        />
+      </div>
+
+      {device && (
+        <section className="rounded-2xl border border-white/10 bg-white/5 p-5">
+          <h2 className="mb-4 flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-foreground-muted">
+            <Cpu className="h-4 w-4 text-sky-400" />
+            Device &amp; OS breakdown
+          </h2>
+          <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
+            <div>
+              <dt className="text-foreground-muted">OS</dt>
+              <dd className="font-medium">{device.os}</dd>
+            </div>
+            <div>
+              <dt className="text-foreground-muted">Device</dt>
+              <dd className="font-medium capitalize">{device.deviceType}</dd>
+            </div>
+            <div>
+              <dt className="text-foreground-muted">Screen</dt>
+              <dd className="font-medium">
+                {device.screenWidth}×{device.screenHeight}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-foreground-muted">Network</dt>
+              <dd className="font-medium capitalize">{device.networkType}</dd>
+            </div>
+          </dl>
+        </section>
+      )}
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <section className="rounded-2xl border border-white/10 bg-white/5 p-5">
+          <h2 className="mb-4 flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-foreground-muted">
+            <Timer className="h-4 w-4 text-sky-400" />
+            Page load time by route
+          </h2>
+          {routeStats.length === 0 ? (
+            <p className="text-sm text-foreground-muted">No route data yet.</p>
+          ) : (
+            <ul className="space-y-2">
+              {routeStats.map((r) => (
+                <li
+                  key={r.route}
+                  className="flex items-center justify-between rounded-lg bg-white/5 px-3 py-2 text-sm"
+                >
+                  <Link href={r.route} className="font-mono text-sky-400 hover:underline">
+                    {r.route}
+                  </Link>
+                  <span className="tabular-nums text-foreground">
+                    {r.avgMs} ms · {r.count}×
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
+        <section className="rounded-2xl border border-white/10 bg-white/5 p-5">
+          <h2 className="mb-4 flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-foreground-muted">
+            <Wifi className="h-4 w-4 text-sky-400" />
+            Network type impact
+          </h2>
+          <div className="space-y-2">
+            {(Object.entries(summary.networkBreakdown) as [
+              NetworkConnectionType,
+              { count: number; avgApiMs: number },
+            ][])
+              .filter(([, v]) => v.count > 0)
+              .map(([type, stats]) => (
+                <NetworkRow
+                  key={type}
+                  type={type}
+                  count={stats.count}
+                  avgApiMs={stats.avgApiMs}
+                />
+              ))}
+            {summary.apiResponses.length === 0 && (
+              <p className="text-sm text-foreground-muted">No API data yet.</p>
+            )}
+          </div>
+        </section>
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <section className="rounded-2xl border border-white/10 bg-white/5 p-5">
+          <h2 className="mb-4 flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-foreground-muted">
+            <MousePointerClick className="h-4 w-4 text-sky-400" />
+            Interaction heatmap
+          </h2>
+          <HeatmapCanvas points={summary.heatmap} />
+        </section>
+
+        <section className="rounded-2xl border border-white/10 bg-white/5 p-5">
+          <h2 className="mb-4 flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-foreground-muted">
+            <AlertTriangle className="h-4 w-4 text-red-400" />
+            Crash reports
+          </h2>
+          {summary.crashes.length === 0 ? (
+            <p className="text-sm text-foreground-muted">No crashes recorded.</p>
+          ) : (
+            <ul className="max-h-80 space-y-3 overflow-y-auto">
+              {summary.crashes
+                .slice()
+                .reverse()
+                .map((crash) => (
+                  <li
+                    key={crash.id}
+                    className="rounded-lg border border-red-500/20 bg-red-500/5 p-3 text-xs"
+                  >
+                    <div className="font-semibold text-red-400">{crash.message}</div>
+                    <div className="mt-1 text-foreground-muted">
+                      {crash.route} · {new Date(crash.timestamp).toLocaleString()}
+                    </div>
+                    {crash.stack && (
+                      <pre className="mt-2 max-h-24 overflow-auto whitespace-pre-wrap text-[10px] text-foreground-muted">
+                        {crash.stack}
+                      </pre>
+                    )}
+                    {crash.sessionSnapshot.length > 0 && (
+                      <details className="mt-2">
+                        <summary className="cursor-pointer text-foreground-muted">
+                          Session recording ({crash.sessionSnapshot.length} events)
+                        </summary>
+                        <ol className="mt-1 list-inside list-decimal space-y-0.5 text-[10px] text-foreground-muted">
+                          {crash.sessionSnapshot.slice(-10).map((e, i) => (
+                            <li key={i}>
+                              [{e.type}] {e.label}
+                            </li>
+                          ))}
+                        </ol>
+                      </details>
+                    )}
+                  </li>
+                ))}
+            </ul>
+          )}
+        </section>
+      </div>
+    </div>
+  );
+}

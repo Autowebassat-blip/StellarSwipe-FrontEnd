@@ -42,8 +42,14 @@ function emit(span: Span): void {
       span
     );
   }
-  // Production hook: forward to your observability backend here.
-  // e.g. sendToDatadog(span) / sendToOpenTelemetry(span)
+
+  if (typeof window !== "undefined") {
+    import("@/services/performanceMonitoring")
+      .then(({ recordTracingSpan }) => recordTracingSpan(span))
+      .catch(() => {
+        // Performance monitoring not available
+      });
+  }
 }
 
 // ─── Public API ───────────────────────────────────────────────────────────────

@@ -1,6 +1,13 @@
+import { withSentryConfig } from "@sentry/nextjs";
+import bundleAnalyzer from "@next/bundle-analyzer";
+
+const withBundleAnalyzer = bundleAnalyzer({
+  enabled: process.env.ANALYZE === "true",
+  openAnalyzer: false,
+});
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Required for stellar-sdk in browser
   webpack: (config, { isServer }) => {
     if (!isServer) {
       config.resolve.fallback = {
@@ -14,4 +21,17 @@ const nextConfig = {
   },
 };
 
-export default nextConfig;
+const configWithBundleAnalyzer = withBundleAnalyzer(nextConfig);
+
+export default withSentryConfig(configWithBundleAnalyzer, {
+  org: "your-org",
+  project: "your-project",
+  silent: true,
+  widenClientFileUpload: true,
+  webpack: {
+    reactComponentAnnotation: { enabled: true },
+    treeshake: { removeDebugLogging: true },
+    automaticVercelMonitors: true,
+  },
+  hideSourceMaps: true,
+});

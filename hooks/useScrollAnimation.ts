@@ -1,8 +1,8 @@
 "use client";
 
-import { useReducedMotion } from "framer-motion";
+import { useReducedMotion, type Variants } from "framer-motion";
 
-export const fadeUpVariants = {
+export const fadeUpVariants: Variants = {
   hidden: { opacity: 0, y: 24 },
   visible: (i = 0) => ({
     opacity: 1,
@@ -11,7 +11,7 @@ export const fadeUpVariants = {
   }),
 };
 
-export const fadeInVariants = {
+export const fadeInVariants: Variants = {
   hidden: { opacity: 0 },
   visible: (i = 0) => ({
     opacity: 1,

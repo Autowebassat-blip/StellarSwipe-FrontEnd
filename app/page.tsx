@@ -1,16 +1,19 @@
 "use client";
 
-import { useState, lazy, Suspense } from "react";
+import { useState } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { useWallet } from "@/hooks/useWallet";
+import { TokenSwapModal } from "@/components/trade/TokenSwapModal";
 import { CTABanner } from "@/components/CTABanner";
 import { HowItWorks } from "@/components/HowItWorks";
 import { Footer } from "@/components/Footer";
 import { PageTransition } from "@/components/PageTransition";
 
 export default function Home() {
-  const [walletModalOpen, setWalletModalOpen] = useState(false);
+  const { publicKey, connected, connect, disconnect } = useWallet();
+  const [tradeOpen, setTradeOpen] = useState(false);
 
   return (
     <PageTransition>
@@ -21,7 +24,9 @@ export default function Home() {
           transition={{ duration: 0.5 }}
           className="relative text-center"
         >
-          <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl md:text-4xl">StellarSwipe</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl md:text-4xl">
+            StellarSwipe
+          </h1>
           <p className="mt-2 text-gray-400">
             Connect your Freighter wallet to get started
           </p>
@@ -33,28 +38,64 @@ export default function Home() {
           transition={{ delay: 0.2, duration: 0.4 }}
           className="flex flex-col items-center gap-4"
         >
-          <Link href="/app">
-            <Button
-              size="lg"
-              className="focus:ring-2 focus:ring-blue-500"
-            >
-              Go to Signals
-            </Button>
-          </Link>
-          <Button
-            variant="outline"
-            onClick={() => setWalletModalOpen(true)}
-            size="lg"
-            className="focus:ring-2 focus:ring-blue-500"
-          >
-            Connect Wallet
-          </Button>
+          {connected ? (
+            <div className="flex flex-col items-center gap-3">
+              <p className="text-sm font-mono text-gray-400">
+                {publicKey?.slice(0, 8)}...{publicKey?.slice(-8)}
+              </p>
+              <div className="flex flex-wrap justify-center gap-3">
+                <Link href="/app">
+                  <Button size="lg" className="focus:ring-2 focus:ring-blue-500">
+                    Go to Signals
+                  </Button>
+                </Link>
+                <Button
+                  size="lg"
+                  onClick={() => setTradeOpen(true)}
+                  className="focus:ring-2 focus:ring-blue-500"
+                >
+                  Swap Tokens
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={disconnect}
+                  className="focus:ring-2 focus:ring-blue-500"
+                >
+                  Disconnect
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center gap-3">
+              <Link href="/app">
+                <Button size="lg" className="focus:ring-2 focus:ring-blue-500">
+                  Go to Signals
+                </Button>
+              </Link>
+              <Button
+                size="lg"
+                onClick={connect}
+                className="focus:ring-2 focus:ring-blue-500"
+              >
+                Connect Wallet
+              </Button>
+              <button
+                type="button"
+                onClick={() => setTradeOpen(true)}
+                className="text-sm text-gray-400 underline underline-offset-4 hover:text-white"
+              >
+                Preview swap UI
+              </button>
+            </div>
+          )}
         </motion.div>
 
         <HowItWorks />
         <CTABanner />
         <Footer />
       </main>
+
+      <TokenSwapModal open={tradeOpen} onOpenChange={setTradeOpen} />
     </PageTransition>
   );
 }

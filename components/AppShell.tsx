@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { useWallet } from "@/hooks/useWallet";
 import { useTransactionStore } from "@/store/useTransactionStore";
@@ -8,11 +8,11 @@ import { Button } from "@/components/ui/button";
 import { TradeModal } from "@/components/TradeModal";
 import { WalletSelectionModal } from "@/components/WalletSelectionModal";
 import { WalletDropdown } from "@/components/WalletDropdown";
-import { KeyboardShortcutsHelpModal } from "@/components/KeyboardShortcutsHelpModal";
 import { PageTransition } from "@/components/PageTransition";
 import { PortfolioAllocationChart } from "@/components/chart/PortfolioAllocationChart";
 import { PortfolioSummaryCards } from "@/components/PortfolioSummaryCards";
 import { PnLWidget } from "@/components/chart/PnLWidget";
+import { DashboardWidgets } from "@/components/DashboardWidgets";
 import { OnChainConfirmationStatus } from "@/components/OnChainConfirmationStatus";
 import { TransactionActivityFeed } from "@/components/TransactionActivityFeed";
 import { PositionStopLossControl } from "@/components/PositionStopLossControl";
@@ -33,7 +33,6 @@ export function AppShell({ children }: AppShellProps) {
   );
   const [modalOpen, setModalOpen] = useState(false);
   const [walletModalOpen, setWalletModalOpen] = useState(false);
-  const [shortcutHelpOpen, setShortcutHelpOpen] = useState(false);
   const [marketPrice, setMarketPrice] = useState(0.4821);
   const [loading, setLoading] = useState(false);
 
@@ -63,27 +62,6 @@ export function AppShell({ children }: AppShellProps) {
     () => assets.reduce((sum, a) => sum + a.value, 0),
     [assets]
   );
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key !== "?") return;
-      if (e.ctrlKey || e.metaKey || e.altKey) return;
-
-      const target = e.target as HTMLElement | null;
-      if (!target) return;
-
-      const isEditable =
-        target.closest("input, textarea, select, [contenteditable='true'], [contenteditable=''], [contenteditable]") ||
-        target.isContentEditable;
-      if (isEditable) return;
-
-      e.preventDefault();
-      setShortcutHelpOpen(true);
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
 
   if (!connected) {
     return (
@@ -129,13 +107,8 @@ export function AppShell({ children }: AppShellProps) {
   return (
     <PageTransition>
       <main className="min-h-screen bg-background px-4 py-6 sm:px-6 sm:py-8 lg:px-8 text-foreground">
-        <header className="mx-auto mb-6 flex w-full max-w-7xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:mb-8">
-          <div>
-            <h1 className="text-xl font-bold tracking-tight text-foreground sm:text-2xl">StellarSwipe</h1>
-            <p className="mt-1 text-sm text-foreground-muted">
-              Press <kbd className="rounded border border-border bg-surface px-1.5 py-0.5 text-xs font-semibold">?</kbd> for keyboard shortcuts.
-            </p>
-          </div>
+        <header className="mx-auto mb-6 flex w-full max-w-7xl items-center justify-between sm:mb-8">
+          <h1 className="text-xl font-bold tracking-tight text-foreground sm:text-2xl">StellarSwipe</h1>
           <div className="flex items-center gap-3">
             <p className="hidden text-sm font-mono text-foreground-muted sm:block">
               {publicKey?.slice(0, 8)}...{publicKey?.slice(-8)}
@@ -180,6 +153,18 @@ export function AppShell({ children }: AppShellProps) {
                   </button>
                 </div>
               </div>
+
+              <div className="w-full max-w-md">
+                <PositionStopLossControl />
+              </div>
+
+              <div className="w-full">
+                <TransactionActivityFeed />
+              </div>
+            </div>
+            {/* Right Column: Dashboard widgets */}
+            <div className="w-full flex flex-col gap-6">
+              <DashboardWidgets />
             </div>
           </div>
         </div>
@@ -190,11 +175,6 @@ export function AppShell({ children }: AppShellProps) {
           marketPrice={marketPrice}
           walletBalance={250}
           portfolioBalance={portfolioBalance}
-        />
-
-        <KeyboardShortcutsHelpModal
-          open={shortcutHelpOpen}
-          onClose={() => setShortcutHelpOpen(false)}
         />
       </main>
     </PageTransition>

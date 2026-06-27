@@ -1,4 +1,5 @@
 export type SignalAction = "BUY" | "SELL" | "HOLD";
+export type SignalStatus = "Active" | "Waiting" | "Closed";
 
 export interface Signal {
   id: string;
@@ -7,6 +8,12 @@ export interface Signal {
   confidence: number;
   details: string;
   timestamp: string;
+  /** ISO timestamp after which the signal is considered expired / no longer actionable */
+  expiresAt?: string;
+  /** Name of the signal provider */
+  provider?: string;
+  /** Current execution state of the signal */
+  status?: SignalStatus;
 }
 
 export interface SignalFeedPage {
@@ -20,6 +27,11 @@ export interface SignalFeedPage {
 
 const signalTickers = ["XLM", "BTC", "ETH", "USDC", "ADA", "SOL", "DOT", "MATIC", "ATOM", "LUNA"];
 const signalActions: SignalAction[] = ["BUY", "SELL", "HOLD"];
+const signalStatuses: SignalStatus[] = ["Active", "Waiting", "Closed"];
+const signalProviders = [
+  "AlphaWave", "OrionSignals", "NebulaAI", "QuantPulse", "StellarEdge",
+  "NovaTrade", "ZenithFX", "PolarSignals", "ApexQuant", "CosmicAlpha",
+];
 const signalDetails = [
   "Momentum building after a strong volume breakout.",
   "Price action suggests a reversal setup near support.",
@@ -34,6 +46,8 @@ const signalDetails = [
 ];
 
 const TOTAL_SIGNALS = 50;
+// Signals older than this are considered expired (30 minutes)
+const SIGNAL_TTL_MS = 30 * 60 * 1000;
 
 export function buildSignalPage(page = 1, pageSize = 10): SignalFeedPage {
   const allSignals: Signal[] = Array.from({ length: TOTAL_SIGNALS }, (_, index) => {
@@ -41,7 +55,10 @@ export function buildSignalPage(page = 1, pageSize = 10): SignalFeedPage {
     const action = signalActions[index % signalActions.length];
     const details = signalDetails[index % signalDetails.length];
     const confidence = 60 + ((index * 7) % 40);
-    const timestamp = new Date(Date.now() - index * 7 * 60 * 1000).toISOString();
+    const createdAt = new Date(Date.now() - index * 7 * 60 * 1000);
+    const timestamp = createdAt.toISOString();
+    // Signals expire SIGNAL_TTL_MS after creation
+    const expiresAt = new Date(createdAt.getTime() + SIGNAL_TTL_MS).toISOString();
 
     return {
       id: `signal-${index + 1}`,
@@ -50,6 +67,9 @@ export function buildSignalPage(page = 1, pageSize = 10): SignalFeedPage {
       confidence,
       details,
       timestamp,
+      expiresAt,
+      provider: signalProviders[index % signalProviders.length],
+      status: signalStatuses[index % signalStatuses.length],
     };
   });
 

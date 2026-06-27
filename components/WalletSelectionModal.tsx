@@ -2,9 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Wallet, Loader2, ExternalLink } from "lucide-react";
+import { X, Wallet, Loader2, ExternalLink, CheckCircle2, AlertCircle } from "lucide-react";
+import { isConnected } from "@stellar/freighter-api";
 import { useWallet } from "@/hooks/useWallet";
 import { useFocusTrap } from "@/hooks/useFocusTrap";
+import { WalletConnectErrorModal } from "@/components/WalletConnectErrorModal";
 
 interface WalletSelectionModalProps {
   open: boolean;
@@ -28,14 +30,40 @@ const WALLET_OPTIONS: WalletOption[] = [
   },
 ];
 
-export function WalletSelectionModal({ open, onClose }: WalletSelectionModalProps) {
-  const { connect, isConnecting } = useWallet();
-  const [selectedWallet, setSelectedWallet] = useState<string | null>(null);
+type DetectionState = "idle" | "detecting" | "detected" | "not-found";
 
-  const focusTrapRef = useFocusTrap({ 
-    isActive: open, 
-    initialFocus: 'button[data-wallet-id="freighter"]' 
+export function WalletSelectionModal({ open, onClose }: WalletSelectionModalProps) {
+  const { connect, isConnecting, connectError, clearConnectError } = useWallet();
+  const [selectedWallet, setSelectedWallet] = useState<string | null>(null);
+  const [detection, setDetection] = useState<Record<string, DetectionState>>({
+    freighter: "idle",
   });
+
+  const focusTrapRef = useFocusTrap({
+    isActive: open,
+    initialFocus: 'button[data-wallet-id="freighter"]',
+  });
+
+  // Detect installed wallets when modal opens
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+
+    setDetection({ freighter: "detecting" });
+
+    isConnected()
+      .then((res) => {
+        if (cancelled) return;
+        setDetection({ freighter: res?.isConnected ? "detected" : "not-found" });
+      })
+      .catch(() => {
+        if (!cancelled) setDetection({ freighter: "not-found" });
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [open]);
 
   // ESC to close
   useEffect(() => {
@@ -50,15 +78,46 @@ export function WalletSelectionModal({ open, onClose }: WalletSelectionModalProp
     if (!open) setSelectedWallet(null);
   }, [open]);
 
-  async function handleSelectWallet(walletId: string) {
+  async function handleSelectWallet(wallet: WalletOption) {
     if (isConnecting) return;
-    setSelectedWallet(walletId);
+    const state = detection[wallet.id];
+
+    if (state === "not-found") {
+      window.open(wallet.installUrl, "_blank", "noopener,noreferrer");
+      return;
+    }
+
+    setSelectedWallet(wallet.id);
     await connect();
-    onClose();
+    // connect() sets connectError on failure; on success connectError stays null.
+    // The WalletConnectErrorModal below reacts to connectError automatically.
+    // We close the selection modal only when there is no error — checked via
+    // the store value after the async call settles.
   }
 
+  function handleErrorModalClose() {
+    clearConnectError();
+    setSelectedWallet(null);
+  }
+
+  function handleRetryFromError() {
+    clearConnectError();
+    setSelectedWallet(null);
+    // Re-open the selection modal (it is still mounted; just clear error state)
+  }
+
+  // Close selection modal on successful connection
+  useEffect(() => {
+    if (!isConnecting && !connectError && selectedWallet) {
+      // connect() finished without error — wallet connected successfully
+      onClose();
+      setSelectedWallet(null);
+    }
+  }, [isConnecting, connectError, selectedWallet, onClose]);
+
   return (
-    <AnimatePresence>
+    <>
+      <AnimatePresence>
       {open && (
         <motion.div
           className="fixed inset-0 z-modal flex items-center justify-center"
@@ -68,7 +127,7 @@ export function WalletSelectionModal({ open, onClose }: WalletSelectionModalProp
         >
           {/* Overlay */}
           <div
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            className="absolute inset-0 bg-overlay/60 backdrop-blur-sm"
             onClick={onClose}
             aria-hidden="true"
           />
@@ -80,7 +139,7 @@ export function WalletSelectionModal({ open, onClose }: WalletSelectionModalProp
             aria-modal="true"
             aria-labelledby="wallet-modal-title"
             aria-describedby="wallet-modal-description"
-            className="relative z-overlay w-full max-w-sm rounded-2xl border border-gray-700/60 bg-gray-900/95 p-6 shadow-2xl"
+            className="relative z-overlay w-full max-w-sm rounded-2xl border border-border bg-surface/95 p-6 shadow-2xl"
             initial={{ scale: 0.92, opacity: 0, y: 20 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.92, opacity: 0, y: 20 }}
@@ -88,38 +147,46 @@ export function WalletSelectionModal({ open, onClose }: WalletSelectionModalProp
           >
             {/* Header */}
             <div className="flex items-center justify-between mb-2">
-              <h2 id="wallet-modal-title" className="text-lg font-semibold text-white">Connect Wallet</h2>
+              <h2 id="wallet-modal-title" className="text-lg font-semibold text-foreground">
+                Connect Wallet
+              </h2>
               <button
                 onClick={onClose}
                 aria-label="Close wallet selection modal"
-                className="rounded-full p-1 text-gray-400 hover:text-white hover:bg-white/10 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="rounded-full p-1 text-foreground-muted hover:text-foreground hover:bg-surface-high/40 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <X size={18} />
               </button>
             </div>
-            <p id="wallet-modal-description" className="text-sm text-gray-400 mb-5">
+            <p id="wallet-modal-description" className="text-sm text-foreground-muted mb-5">
               Choose a wallet to connect to StellarSwipe
             </p>
 
             {/* Wallet options */}
             <div className="space-y-3">
               {WALLET_OPTIONS.map((wallet) => {
+                const state = detection[wallet.id] ?? "idle";
                 const isSelected = selectedWallet === wallet.id;
                 const loading = isSelected && isConnecting;
+                const notFound = state === "not-found";
 
                 return (
                   <button
                     key={wallet.id}
                     data-wallet-id={wallet.id}
-                    onClick={() => handleSelectWallet(wallet.id)}
-                    disabled={isConnecting}
+                    onClick={() => handleSelectWallet(wallet)}
+                    disabled={isConnecting || state === "detecting"}
                     aria-describedby={`wallet-${wallet.id}-description`}
-                    className="w-full flex items-start gap-4 rounded-xl border border-white/10 bg-white/5 p-4 text-left hover:border-blue-500/50 hover:bg-white/10 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="w-full flex items-start gap-4 rounded-xl border border-border bg-surface p-4 text-left hover:border-blue-500/50 hover:bg-surface-high/50 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {/* Icon */}
                     <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-600/20 border border-blue-500/30">
-                      {loading ? (
-                        <Loader2 size={20} className="text-blue-400 animate-spin" aria-hidden="true" />
+                      {loading || state === "detecting" ? (
+                        <Loader2
+                          size={20}
+                          className="text-blue-400 animate-spin"
+                          aria-hidden="true"
+                        />
                       ) : (
                         <Wallet size={20} className="text-blue-400" aria-hidden="true" />
                       )}
@@ -127,12 +194,26 @@ export function WalletSelectionModal({ open, onClose }: WalletSelectionModalProp
 
                     {/* Text */}
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-white">{wallet.name}</p>
-                      <p id={`wallet-${wallet.id}-description`} className="mt-0.5 text-xs text-gray-400 leading-relaxed">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-semibold text-foreground">{wallet.name}</p>
+                        <ProviderStatusBadge state={state} />
+                      </div>
+                      <p
+                        id={`wallet-${wallet.id}-description`}
+                        className="mt-0.5 text-xs text-foreground-muted leading-relaxed"
+                      >
                         {wallet.description}
                       </p>
                       {loading && (
-                        <p className="mt-1.5 text-xs text-blue-400" aria-live="polite">Connecting…</p>
+                        <p className="mt-1.5 text-xs text-accent-primary" aria-live="polite">
+                          Connecting…
+                        </p>
+                      )}
+                      {notFound && (
+                        <p className="mt-1.5 text-xs text-accent-warning flex items-center gap-1">
+                          <ExternalLink size={11} />
+                          Click to install
+                        </p>
                       )}
                     </div>
                   </button>
@@ -147,7 +228,7 @@ export function WalletSelectionModal({ open, onClose }: WalletSelectionModalProp
                 href="https://www.freighter.app"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-blue-400 hover:text-blue-300 inline-flex items-center gap-1 underline-offset-2 hover:underline"
+                className="text-accent-primary hover:text-accent-primary/80 inline-flex items-center gap-1 underline-offset-2 hover:underline"
               >
                 Install Freighter <ExternalLink size={11} />
               </a>
@@ -156,5 +237,34 @@ export function WalletSelectionModal({ open, onClose }: WalletSelectionModalProp
         </motion.div>
       )}
     </AnimatePresence>
+
+      {/* Wallet connect error modal — shown when connection fails */}
+      <WalletConnectErrorModal
+        open={!!connectError}
+        reason={connectError}
+        onClose={handleErrorModalClose}
+        onRetry={handleRetryFromError}
+      />
+    </>
+  );
+}
+
+function ProviderStatusBadge({ state }: { state: DetectionState }) {
+  if (state === "detecting" || state === "idle") return null;
+
+  if (state === "detected") {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-green-500/15 px-2 py-0.5 text-[10px] font-medium text-green-400">
+        <CheckCircle2 size={10} />
+        Detected
+      </span>
+    );
+  }
+
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-medium text-amber-400">
+      <AlertCircle size={10} />
+      Not installed
+    </span>
   );
 }
